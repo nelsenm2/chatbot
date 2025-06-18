@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude 4 Opus Chatbot with Knowledge Base - Powered by Puter.js</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 50px rgba(0,0,0,0.1);
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8fafc;
+            border-right: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .knowledge-base {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .kb-section {
+            margin-bottom: 25px;
+        }
+
+        .kb-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-upload {
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input:hover {
+            border-color: #4f46e5;
+            background: #f0f4ff;
+        }
+
+        .file-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .file-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-remove {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .model-badge {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+
+        .message-content {
+            flex: 1;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 80%;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .message-time {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 5px;
+        }
+
+        .chat-input {
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 20px;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 25px;
+            resize: none;
+            max-height: 120px;
+            min-height: 50px;
+            font-family: inherit;
+            font-size: 16px;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+
+        .send-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .send-button:hover {
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            font-style: italic;
+            padding: 10px 15px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6b7280;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+            30% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .clear-chat, .clear-storage-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .clear-storage-btn {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            margin-top: 5px;
+        }
+
+        .clear-storage-btn:hover {
+            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+        }
+
+        .kb-stats {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 0.9rem;
+            color: #1e40af;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 300px;
+            }
+            
+            .main-chat {
+                height: calc(100vh - 300px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>🤖 Claude 4 Opus</h1>
+                <p>AI Chatbot with Knowledge Base</p>
+            </div>
+            
+            <div class="knowledge-base">
+                <div class="kb-section">
+                    <div class="kb-title">
+                        📁 Knowledge Base
+                    </div>
+                    
+                    <div class="file-upload">
+                        <input type="file" id="file-input" accept=".txt" multiple style="display: none;">
+                        <div class="file-input" onclick="document.getElementById('file-input').click()">
+                            📄 Click to upload .txt files
+                        </div>
+                    </div>
+                    
+                    <div class="file-list" id="file-list">
+                        <!-- Uploaded files will appear here -->
+                    </div>
+                    
+                    <div class="kb-stats" id="kb-stats">
+                        📊 0 files in knowledge base
+                    </div>
+                    
+                    <div class="kb-actions">
+                        <button class="clear-chat" onclick="clearChat()">🗑️ Clear Chat History</button>
+                        <button class="clear-storage-btn" onclick="clearAllStorage()" title="Clear all data including knowledge base and chat history">🗑️ Clear All Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-chat">
+            <div class="chat-header">
+                <div class="chat-title">💬 Chat with Claude</div>
+                <div class="model-badge">Claude 4 Opus</div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <div class="message assistant">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <div>Hello! I'm Claude 4 Opus, your AI assistant. You can upload text files to my knowledge base and ask me questions about them, or just chat with me about anything!</div>
+                        <div class="message-time">Just now</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <div class="input-container">
+                    <textarea 
+                        id="message-input" 
+                        class="message-input" 
+                        placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
+                        rows="1"
+                    ></textarea>
+                    <button id="send-button" class="send-button" onclick="sendMessage()">
+                        ➤
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check for file protocol and warn user
+        if (window.location.protocol === 'file:') {
+            alert('Puter.js requires the page to be served over HTTP or HTTPS. Please use a local web server (e.g., Python\'s http.server, Node.js http-server, or VS Code Live Server) to open this file. Functionality may be limited or broken when opened directly via file:///.');
+        }
+
+        // Global state
+        let isGenerating = false;
+        let knowledgeBase = [];
+        let chatHistory = [];
+        let storageManager = null;
+        let fileManager = null;
+        let chatManager = null;
+        
+        // Storage Manager Class
+        class StorageManager {
+            static async save(key, data) {
+                try {
+                    await puter.kv.set(key, JSON.stringify(data));
+                    return true;
+                } catch (error) {
+                    console.error(`Storage save error for ${key}:`, error);
+                    return false;
+                }
+            }
+            
+            static async load(key) {
+                try {
+                    const data = await puter.kv.get(key);
+                    return data ? JSON.parse(data) : null;
+                } catch (error) {
+                    console.error(`Storage load error for ${key}:`, error);
+                    return null;
+                }
+            }
+            
+            static async delete(key) {
+                try {
+                    await puter.kv.del(key);
+                    return true;
+                } catch (error) {
+                    console.error(`Storage delete error for ${key}:`, error);
+                    return false;
+                }
+            }
+            
+            static async clear() {
+                try {
+                    await puter.kv.del('claude-kb-metadata');
+                    await puter.kv.del('claude-chat-history');
+                    return true;
+                } catch (error) {
+                    console.error('Storage clear error:', error);
+                    return false;
+                }
+            }
+        }
+        
+        // File Manager Class
+        class FileManager {
+            static async upload(files) {
+                try {
+                    const uploadedFiles = [];
+                    
+                    for (const file of files) {
+                        // Generate unique filename
+                        const timestamp = Date.now();
+                        const randomId = Math.random().toString(36).substr(2, 9);
+                        const filename = `kb_${timestamp}_${randomId}_${file.name}`;
+                        
+                        // Upload to Puter file system
+                        await puter.fs.write(filename, file);
+                        
+                        const fileData = {
+                            id: timestamp + Math.random(),
+                            name: file.name,
+                            puterPath: filename,
+                            uploadedAt: new Date().toISOString(),
+                            size: file.size,
+                            type: file.type || 'text/plain'
+                        };
+                        
+                        uploadedFiles.push(fileData);
+                    }
+                    
+                    return uploadedFiles;
+                } catch (error) {
+                    console.error('File upload error:', error);
+                    throw error;
+                }
+            }
+            
+            static async read(puterPath) {
+                try {
+                    const blob = await puter.fs.read(puterPath);
+                    return await blob.text();
+                } catch (error) {
+                    console.error(`File read error for ${puterPath}:`, error);
+                    throw error;
+                }
+            }
+            
+            static async delete(puterPath) {
+                try {
+                    await puter.fs.delete(puterPath);
+                    return true;
+                } catch (error) {
+                    console.error(`File delete error for ${puterPath}:`, error);
+                    return false;
+                }
+            }
+            
+            static async exists(puterPath) {
+                try {
+                    await puter.fs.stat(puterPath);
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            }
+        }
+        
+        // Chat Manager Class
+        class ChatManager {
+            static async sendMessage(message, context) {
+                try {
+                    const fullPrompt = context ? 
+                        `Context from knowledge base:\n${context}\n\nUser question: ${message}` : 
+                        message;
+                    
+                    const response = await puter.ai.chat(fullPrompt, {
+                        model: 'claude-opus-4',
+                        stream: true
+                    });
+                    
+                    return response;
+                } catch (error) {
+                    console.error('Chat error:', error);
+                    throw error;
+                }
+            }
+            
+            static addMessage(type, content) {
+                const message = {
+                    type,
+                    content,
+                    timestamp: new Date().toISOString(),
+                    id: Date.now() + Math.random()
+                };
+                
+                chatHistory.push(message);
+                
+                // Auto-save chat history (debounced)
+                debouncedSaveChatHistory();
+                
+                return message;
+            }
+            
+            static clearHistory() {
+                chatHistory = [];
+                StorageManager.save('claude-chat-history', chatHistory);
+            }
+        }
+        
+        // Error Handler Class
+        class ErrorHandler {
+            static async withRetry(operation, maxRetries = 3) {
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        return await operation();
+                    } catch (error) {
+                        if (i === maxRetries - 1) throw error;
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                    }
+                }
+            }
+            
+            static handleError(error, context) {
+                console.error(`Error in ${context}:`, error);
+                showStatus(`❌ ${context} failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Utility Functions
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+        
+        // Debounced save functions
+        const debouncedSaveKnowledgeBase = debounce(async () => {
+            await StorageManager.save('claude-kb-metadata', knowledgeBase);
+        }, 1000);
+        
+        const debouncedSaveChatHistory = debounce(async () => {
+            // Keep only last 100 messages to manage storage
+            const limitedHistory = chatHistory.slice(-100);
+            await StorageManager.save('claude-chat-history', limitedHistory);
+        }, 2000);
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                showStatus('🚀 Initializing Claude 4 Opus with enhanced storage...', 'info');
+                
+                setupEventListeners();
+                
+                // Load saved data from Puter storage
+                await loadKnowledgeBase();
+                await loadChatHistory();
+                
+                updateKnowledgeBaseStats();
+                
+                showStatus('✅ Application initialized successfully with 20MB+ storage capacity!', 'success');
+                
+            } catch (error) {
+                ErrorHandler.handleError(error, 'Application initialization');
+                showStatus('⚠️ Application started with limited functionality', 'warning');
+            }
+        });
+        
+        function setupEventListeners() {
+            // File input change event
+            document.getElementById('file-input').addEventListener('change', handleFileUpload);
+            
+            // Message input events
+            const messageInput = document.getElementById('message-input');
+            messageInput.addEventListener('keydown', handleMessageInputKeydown);
+            messageInput.addEventListener('input', autoResizeTextarea);
+            
+            // Send button click
+            document.getElementById('send-button').addEventListener('click', sendMessage);
+        }
+        
+        // File upload handling with enhanced storage
+        async function handleFileUpload(event) {
+            const files = Array.from(event.target.files);
+            
+            // Supported file types (expanded beyond just .txt)
+            const supportedTypes = {
+                'text/plain': 'text',
+                'application/json': 'json',
+                'text/markdown': 'markdown',
+                'text/csv': 'csv',
+                'application/javascript': 'javascript',
+                'text/html': 'html',
+                'text/css': 'css'
+            };
+            
+            for (const file of files) {
+                const isSupported = supportedTypes[file.type] || 
+                    file.name.match(/\.(txt|md|json|csv|js|html|css|py|java|cpp|c|h)$/i);
+                
+                if (isSupported) {
+                    try {
+                        // Enhanced file size limit (20MB per file)
+                        if (file.size > 20 * 1024 * 1024) {
+                            showStatus(`❌ File "${file.name}" is too large (max 20MB). Please use a smaller file.`, 'error');
+                            continue;
+                        }
+                        
+                        showStatus(`📤 Uploading "${file.name}"...`, 'info');
+                        
+                        // Use FileManager to upload to Puter file system
+                        const uploadedFiles = await ErrorHandler.withRetry(
+                            () => FileManager.upload([file])
+                        );
+                        
+                        const fileData = uploadedFiles[0];
+                        
+                        // Add to knowledge base metadata
+                        knowledgeBase.push(fileData);
+                        addFileToList(fileData);
+                        
+                        // Save metadata using new storage system
+                        await debouncedSaveKnowledgeBase();
+                        updateKnowledgeBaseStats();
+                        
+                        showStatus(`✅ File "${file.name}" uploaded successfully! (${formatBytes(file.size)})`, 'success');
+                        
+                    } catch (error) {
+                        ErrorHandler.handleError(error, `File upload for "${file.name}"`);
+                    }
+                } else {
+                    showStatus(`❌ File type not supported: "${file.name}". Supported: .txt, .md, .json, .csv, .js, .html, .css, .py, .java, .cpp, .c, .h`, 'error');
+                }
+            }
+            
+            // Clear the file input
+            event.target.value = '';
+        }
+        
+        // Enhanced file content loading (lazy loading)
+        async function getFileContent(fileData) {
+            try {
+                // Check if content is already cached
+                if (fileData.content) {
+                    return fileData.content;
+                }
+                
+                // Load content from Puter file system
+                const content = await FileManager.read(fileData.puterPath);
+                
+                // Cache content temporarily (optional)
+                fileData.content = content;
+                
+                return content;
+            } catch (error) {
+                ErrorHandler.handleError(error, `Loading content for "${fileData.name}"`);
+                return '';
+            }
+        }
+        
+        // File content processor based on type
+        function processFileContent(content, fileType) {
+            switch(fileType) {
+                case 'json':
+                    try {
+                        const parsed = JSON.parse(content);
+                        return JSON.stringify(parsed, null, 2);
+                    } catch {
+                        return content;
+                    }
+                case 'csv':
+                    // Basic CSV processing - convert to readable format
+                    return content.split('\n').map(line => 
+                        line.split(',').join(' | ')
+                    ).join('\n');
+                case 'markdown':
+                    // Keep markdown as-is for now
+                    return content;
+                default:
+                    return content;
+            }
+        }
+        
+        function addFileToList(fileData) {
+            const fileList = document.getElementById('file-list');
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <div class="file-name" title="${fileData.name}">
+                    📄 ${fileData.name}
+                </div>
+                <button class="file-remove" onclick="removeFile('${fileData.id}')">
+                    ✕
+                </button>
+            `;
+            fileList.appendChild(fileItem);
+        }
+        
+        async function removeFile(fileId) {
+            try {
+                const fileToRemove = knowledgeBase.find(file => file.id == fileId);
+                
+                if (fileToRemove) {
+                    // Delete from Puter file system
+                    await FileManager.delete(fileToRemove.puterPath);
+                    
+                    // Remove from knowledge base
+                    knowledgeBase = knowledgeBase.filter(file => file.id != fileId);
+                    
+                    // Save updated metadata
+                    await debouncedSaveKnowledgeBase();
+                    updateKnowledgeBaseStats();
+                    refreshFileList();
+                    
+                    showStatus(`🗑️ File "${fileToRemove.name}" removed from knowledge base`, 'success');
+                } else {
+                    showStatus('❌ File not found', 'error');
+                }
+            } catch (error) {
+                ErrorHandler.handleError(error, 'File removal');
+            }
+        }
+        
+        function refreshFileList() {
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+            knowledgeBase.forEach(file => addFileToList(file));
+        }
+        
+        function updateKnowledgeBaseStats() {
+            const stats = document.getElementById('kb-stats');
+            const fileCount = knowledgeBase.length;
+            const totalSize = knowledgeBase.reduce((sum, file) => sum + file.size, 0);
+            
+            stats.innerHTML = `📊 ${fileCount} files (${formatBytes(totalSize)})<br><small>Enhanced 20MB+ Storage via Puter.js</small>`;
+            
+            // Show storage info with enhanced capacity
+            stats.style.color = totalSize > 15000000 ? '#ff6b6b' : '#4CAF50'; // Warn at 15MB instead of 4MB
+                showStatus('⚠️ Storage is nearly full. Consider removing some files.', 'warning');
+            if (stats) {
+                stats.style.color = '#666';
+            }
+        }
+        function setupEventListeners() {
+            // File input change event
+            document.getElementById('file-input').addEventListener('change', handleFileUpload);
+            
+            // Message input events
+            const messageInput = document.getElementById('message-input');
+            messageInput.addEventListener('keydown', handleMessageInputKeydown);
+            messageInput.addEventListener('input', autoResizeTextarea);
+            
+            // Send button click event
+            document.getElementById('send-button').addEventListener('click', sendMessage);
+        }
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+        
+        // Chat functionality
+        function handleMessageInputKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+        
+        function autoResizeTextarea() {
+            const textarea = document.getElementById('message-input');
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+        
+        async function sendMessage() {
+            if (isGenerating) return;
+            
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message to chat using ChatManager
+            ChatManager.addMessage('user', message);
+            addMessageToChat('user', message);
+            messageInput.value = '';
+            autoResizeTextarea();
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            try {
+                isGenerating = true;
+                document.getElementById('send-button').disabled = true;
+                
+                // Prepare context from knowledge base (enhanced)
+                const context = await prepareKnowledgeBaseContext(message);
+                
+                // Use ChatManager to send message
+                const response = await ErrorHandler.withRetry(
+                    () => ChatManager.sendMessage(message, context)
+                );
+                
+                // Remove typing indicator and start streaming response
+                removeTypingIndicator();
+                const messageElement = addMessageToChat('assistant', '');
+                const contentElement = messageElement.querySelector('.message-content > div:first-child');
+                
+                let fullResponse = '';
+                for await (const part of response) {
+                    if (part?.text) {
+                        fullResponse += part.text;
+                        contentElement.textContent = fullResponse;
+                        scrollToBottom();
+                    }
+                }
+                
+                // Update timestamp
+                const timeElement = messageElement.querySelector('.message-time');
+                timeElement.textContent = formatTime(new Date());
+                
+                // Save assistant response using ChatManager
+                ChatManager.addMessage('assistant', fullResponse);
+                
+            } catch (error) {
+                removeTypingIndicator();
+                const errorMessage = `❌ Error: ${error.message}`;
+                addMessageToChat('assistant', errorMessage);
+                ChatManager.addMessage('assistant', errorMessage);
+                ErrorHandler.handleError(error, 'Send message');
+            } finally {
+                isGenerating = false;
+                document.getElementById('send-button').disabled = false;
+            }
+        }
+        
+        async function prepareKnowledgeBaseContext(userMessage) {
+            if (knowledgeBase.length === 0) return null;
+            
+            try {
+                // Enhanced keyword matching with better scoring
+                const keywords = userMessage.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+                const fileScores = [];
+                
+                for (const file of knowledgeBase) {
+                    let score = 0;
+                    const fileName = file.name.toLowerCase();
+                    
+                    // Load file content lazily
+                    const fileContent = await getFileContent(file);
+                    const processedContent = processFileContent(fileContent, file.type);
+                    const contentLower = processedContent.toLowerCase();
+                    
+                    // Score based on filename matches (higher weight)
+                    keywords.forEach(keyword => {
+                        if (fileName.includes(keyword)) score += 10;
+                        
+                        // Count occurrences in content
+                        const matches = (contentLower.match(new RegExp(keyword, 'g')) || []).length;
+                        score += matches;
+                    });
+                    
+                    if (score > 0) {
+                        fileScores.push({ file, score, content: processedContent });
+                    }
+                }
+                
+                // Sort by relevance score and take top 5 files
+                fileScores.sort((a, b) => b.score - a.score);
+                const relevantFiles = fileScores.slice(0, 5);
+                
+                if (relevantFiles.length === 0) {
+                    // If no specific matches, include a summary of all files (limited)
+                    const summaries = [];
+                    for (let i = 0; i < Math.min(3, knowledgeBase.length); i++) {
+                        const file = knowledgeBase[i];
+                        const content = await getFileContent(file);
+                        const preview = content.substring(0, 300);
+                        summaries.push(`File: ${file.name} (${formatBytes(file.size)})\nPreview: ${preview}${content.length > 300 ? '...' : ''}`);
+                    }
+                    return summaries.join('\n\n');
+                }
+                
+                // Return content of relevant files with size limits
+                const contextParts = [];
+                let totalLength = 0;
+                const maxContextLength = 15000; // Limit context to ~15KB
+                
+                for (const { file, content } of relevantFiles) {
+                    const fileHeader = `\n--- File: ${file.name} (${formatBytes(file.size)}, Score: ${fileScores.find(f => f.file.id === file.id)?.score}) ---\n`;
+                    const fileContent = content.length > 3000 ? content.substring(0, 3000) + '\n[Content truncated...]' : content;
+                    
+                    const fullFileText = fileHeader + fileContent;
+                    
+                    if (totalLength + fullFileText.length > maxContextLength) {
+                        break;
+                    }
+                    
+                    contextParts.push(fullFileText);
+                    totalLength += fullFileText.length;
+                }
+                
+                return contextParts.join('\n');
+                
+            } catch (error) {
+                ErrorHandler.handleError(error, 'Preparing knowledge base context');
+                return null;
+            }
+        }
+        
+        function addMessageToChat(role, content) {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${role}`;
+            
+            const avatar = role === 'user' ? '👤' : '🤖';
+            const time = formatTime(new Date());
+            
+            messageElement.innerHTML = `
+                <div class="message-avatar">${avatar}</div>
+                <div class="message-content">
+                    <div>${content}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageElement);
+            scrollToBottom();
+            return messageElement;
+        }
+        
+        function showTypingIndicator() {
+            const chatMessages = document.getElementById('chat-messages');
+            const typingElement = document.createElement('div');
+            typingElement.className = 'typing-indicator';
+            typingElement.id = 'typing-indicator';
+            typingElement.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div>Claude is thinking</div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            chatMessages.appendChild(typingElement);
+            scrollToBottom();
+        }
+        
+        function removeTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+        
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        async function clearChat() {
+            if (confirm('Are you sure you want to clear the chat history?')) {
+                const chatMessages = document.getElementById('chat-messages');
+                chatMessages.innerHTML = `
+                    <div class="message assistant">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">
+                            <div>Hello! I'm Claude Sonnet 4, your AI assistant with enhanced 20MB+ storage! You can upload various file types (.txt, .md, .json, .csv, .js, .html, .css, .py, .java, .cpp, .c, .h) to my knowledge base and ask me questions about them, or just chat with me about anything!</div>
+                            <div class="message-time">Just now</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Use ChatManager to clear history
+                ChatManager.clearHistory();
+                showStatus('🗑️ Chat history cleared', 'success');
+            }
+        }
+        
+        // Storage management functions
+        function canStoreData(data) {
+            try {
+                const testData = JSON.stringify(data);
+                // Rough estimate: if data is larger than 4MB, it might exceed quota
+                return testData.length < 4000000;
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        function getStorageUsage() {
+            let total = 0;
+            for (let key in localStorage) {
+                if (localStorage.hasOwnProperty(key)) {
+                    total += localStorage[key].length + key.length;
+                }
+            }
+            return total;
+        }
+        
+        // Local storage functions with error handling
+        async function saveKnowledgeBase() {
+            try {
+                // Save only metadata to KV store (file content is in Puter FS)
+                const metadata = knowledgeBase.map(file => ({
+                    id: file.id,
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    uploadDate: file.uploadDate
+                }));
+                
+                await StorageManager.save('knowledge_base', metadata);
+                return true;
+            } catch (error) {
+                ErrorHandler.handleError(error, 'Save knowledge base');
+                return false;
+            }
+        }
+        
+        async function loadKnowledgeBase() {
+            try {
+                const metadata = await StorageManager.load('knowledge_base');
+                if (metadata && Array.isArray(metadata)) {
+                    knowledgeBase = metadata;
+                    refreshFileList();
+                    updateKnowledgeBaseStats();
+                    showStatus(`📁 Loaded ${metadata.length} files from storage`, 'info');
+                }
+            } catch (error) {
+                ErrorHandler.handleError(error, 'Load knowledge base');
+                knowledgeBase = [];
+            }
+        }
+        
+        // Chat history is now managed by ChatManager class
+        // This function is kept for compatibility but delegates to ChatManager
+        async function saveChatHistory() {
+            try {
+                await ChatManager.saveHistory();
+                return true;
+            } catch (error) {
+                ErrorHandler.handleError(error, 'Save chat history');
+                return false;
+            }
+        }
+        
+        async function loadChatHistory() {
+            try {
+                const history = await StorageManager.load('chat_history');
+                if (history && Array.isArray(history)) {
+                    ChatManager.setHistory(history);
+                    
+                    // Restore chat messages to UI
+                    const chatMessages = document.getElementById('chat-messages');
+                    chatMessages.innerHTML = `
+                        <div class="message assistant">
+                            <div class="message-avatar">🤖</div>
+                            <div class="message-content">
+                                <div>Hello! I'm Claude Sonnet 4, your AI assistant with enhanced 20MB+ storage! You can upload various file types to my knowledge base and ask me questions about them, or just chat with me about anything!</div>
+                                <div class="message-time">Just now</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    history.forEach(msg => {
+                        addMessageToChat(msg.type, msg.content, new Date(msg.timestamp));
+                    });
+                    
+                    showStatus(`💬 Loaded ${history.length} chat messages`, 'info');
+                }
+            } catch (error) {
+                ErrorHandler.handleError(error, 'Load chat history');
+            }
+        }
+        
+        async function clearAllStorage() {
+            if (confirm('⚠️ This will permanently delete ALL data including chat history and knowledge base files from Puter storage. Are you sure?')) {
+                try {
+                    // Clear all files from Puter file system
+                    for (const file of knowledgeBase) {
+                        try {
+                            await FileManager.delete(file.id);
+                        } catch (error) {
+                            console.warn(`Failed to delete file ${file.name}:`, error);
+                        }
+                    }
+                    
+                    // Clear Puter KV storage
+                    await StorageManager.clear('knowledge_base');
+                    await StorageManager.clear('chat_history');
+                    
+                    // Clear in-memory data
+                    knowledgeBase = [];
+                    ChatManager.clearHistory();
+                    
+                    // Reset UI
+                    refreshFileList();
+                    updateKnowledgeBaseStats();
+                    
+                    // Reset chat
+                    const chatMessages = document.getElementById('chat-messages');
+                    chatMessages.innerHTML = `
+                        <div class="message assistant">
+                            <div class="message-avatar">🤖</div>
+                            <div class="message-content">
+                                <div>Hello! I'm Claude Sonnet 4, your AI assistant with enhanced 20MB+ storage! You can upload various file types to my knowledge base and ask me questions about them, or just chat with me about anything!</div>
+                                <div class="message-time">Just now</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    showStatus('🗑️ All data cleared successfully from Puter storage', 'success');
+                } catch (error) {
+                    ErrorHandler.handleError(error, 'Clear all storage');
+                }
+            }
+        }
+        
+        function showStatus(message, type) {
+            // Create a temporary status message
+            const statusElement = document.createElement('div');
+            statusElement.className = `status ${type}`;
+            statusElement.textContent = message;
+            statusElement.style.position = 'fixed';
+            statusElement.style.top = '20px';
+            statusElement.style.right = '20px';
+            statusElement.style.zIndex = '1000';
+            statusElement.style.maxWidth = '300px';
+            
+            document.body.appendChild(statusElement);
+            
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                if (statusElement.parentNode) {
+                    statusElement.parentNode.removeChild(statusElement);
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
