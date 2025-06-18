@@ -369,6 +369,39 @@
             color: #1e40af;
             text-align: center;
         }
+        
+        /* Code block styling */
+        .code-block {
+            margin: 10px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #282c34;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        .code-header {
+            background: #3e4451;
+            color: #abb2bf;
+            padding: 6px 12px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            text-transform: lowercase;
+            border-bottom: 1px solid #181a1f;
+        }
+        
+        .code-block pre {
+            margin: 0;
+            padding: 12px;
+            overflow-x: auto;
+        }
+        
+        .code-block code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            color: #abb2bf;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            white-space: pre;
+        }
 
         @media (max-width: 768px) {
             .container {
@@ -653,9 +686,7 @@
         }
         
         // Debounced save functions
-        const debouncedSaveKnowledgeBase = debounce(async () => {
-            await StorageManager.save('claude-kb-metadata', knowledgeBase);
-        }, 1000);
+        const debouncedSaveKnowledgeBase = debounce(saveKnowledgeBase, 1000);
         
         const debouncedSaveChatHistory = debounce(async () => {
             // Keep only last 100 messages to manage storage
@@ -726,6 +757,9 @@
                         
                         showStatus(`📤 Uploading "${file.name}"...`, 'info');
                         
+                        // Check if file already exists in knowledge base
+                        const existingFileIndex = knowledgeBase.findIndex(f => f.name === file.name);
+                        
                         // Use FileManager to upload to Puter file system
                         const uploadedFiles = await ErrorHandler.withRetry(
                             () => FileManager.upload([file])
@@ -733,12 +767,22 @@
                         
                         const fileData = uploadedFiles[0];
                         
-                        // Add to knowledge base metadata
-                        knowledgeBase.push(fileData);
-                        addFileToList(fileData);
+                        // Add or update in knowledge base metadata
+                        if (existingFileIndex >= 0) {
+                            // If file exists, update it
+                            knowledgeBase[existingFileIndex] = fileData;
+                            showStatus(`🔄 Updated file "${file.name}" in knowledge base`, 'success');
+                        } else {
+                            // Add new file to knowledge base
+                            knowledgeBase.push(fileData);
+                            showStatus(`✅ Added file "${file.name}" to knowledge base`, 'success');
+                        }
                         
-                        // Save metadata using new storage system
-                        await debouncedSaveKnowledgeBase();
+                        // Save metadata immediately
+                        await saveKnowledgeBase();
+                        
+                        // Update UI
+                        refreshFileList();
                         updateKnowledgeBaseStats();
                         
                         showStatus(`✅ File "${file.name}" uploaded successfully! (${formatBytes(file.size)})`, 'success');
@@ -799,19 +843,35 @@
             }
         }
         
-        function addFileToList(fileData) {
+        function refreshFileList() {
             const fileList = document.getElementById('file-list');
-            const fileItem = document.createElement('div');
-            fileItem.className = 'file-item';
-            fileItem.innerHTML = `
-                <div class="file-name" title="${fileData.name}">
-                    📄 ${fileData.name}
-                </div>
-                <button class="file-remove" onclick="removeFile('${fileData.id}')">
-                    ✕
-                </button>
-            `;
-            fileList.appendChild(fileItem);
+            
+            // Clear the current list
+            fileList.innerHTML = '';
+            
+            // Sort files by name
+            const sortedFiles = [...knowledgeBase].sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Add each file to the list
+            for (const fileData of sortedFiles) {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <div class="file-name" title="${fileData.name}">
+                        📄 ${fileData.name}
+                    </div>
+                    <button class="file-remove" onclick="removeFile('${fileData.id}')">
+                        ✕
+                    </button>
+                `;
+                fileList.appendChild(fileItem);
+            }
+            
+            // Update empty state
+            const emptyState = document.getElementById('empty-state');
+            if (emptyState) {
+                emptyState.style.display = knowledgeBase.length === 0 ? 'block' : 'none';
+            }
         }
         
         async function removeFile(fileId) {
@@ -1038,10 +1098,17 @@
             const avatar = role === 'user' ? '👤' : '🤖';
             const time = formatTime(new Date());
             
+            // Process content for code blocks if it's from assistant
+            let processedContent = content;
+            if (role === 'assistant') {
+                // Replace markdown code blocks with HTML
+                processedContent = processMarkdownCodeBlocks(content);
+            }
+            
             messageElement.innerHTML = `
                 <div class="message-avatar">${avatar}</div>
                 <div class="message-content">
-                    <div>${content}</div>
+                    <div>${processedContent}</div>
                     <div class="message-time">${time}</div>
                 </div>
             `;
@@ -1049,6 +1116,24 @@
             chatMessages.appendChild(messageElement);
             scrollToBottom();
             return messageElement;
+        }
+        
+        // Function to process markdown code blocks
+        function processMarkdownCodeBlocks(text) {
+            // Replace ```language\ncode\n``` with styled code blocks
+            return text.replace(/```([a-zA-Z]*)\n([\s\S]*?)```/g, (match, language, code) => {
+                return `<div class="code-block"><div class="code-header">${language || 'code'}</div><pre><code>${escapeHtml(code.trim())}</code></pre></div>`;
+            });
+        }
+        
+        // Helper function to escape HTML
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
         
         function showTypingIndicator() {
@@ -1128,31 +1213,53 @@
         // Local storage functions with error handling
         async function saveKnowledgeBase() {
             try {
-                // Save only metadata to KV store (file content is in Puter FS)
-                const metadata = knowledgeBase.map(file => ({
-                    id: file.id,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    uploadDate: file.uploadDate
-                }));
-                
-                await StorageManager.save('knowledge_base', metadata);
+                // Save metadata to Puter KV storage
+                await StorageManager.save('claude-kb-metadata', knowledgeBase);
+                console.log(`Saved ${knowledgeBase.length} files to knowledge base metadata`);
                 return true;
             } catch (error) {
                 ErrorHandler.handleError(error, 'Save knowledge base');
+                showStatus('⚠️ Failed to save knowledge base metadata', 'error');
                 return false;
             }
         }
         
+        // The debouncedSaveKnowledgeBase function is already defined earlier in the code
+        
         async function loadKnowledgeBase() {
             try {
-                const metadata = await StorageManager.load('knowledge_base');
+                // Try to load from Puter KV storage first
+                const metadata = await StorageManager.load('claude-kb-metadata');
+                
                 if (metadata && Array.isArray(metadata)) {
-                    knowledgeBase = metadata;
+                    // Verify each file exists in Puter filesystem
+                    const validFiles = [];
+                    
+                    for (const file of metadata) {
+                        try {
+                            // Check if file exists in Puter filesystem
+                            if (file.puterPath && await FileManager.exists(file.puterPath)) {
+                                validFiles.push(file);
+                            } else {
+                                console.warn(`File ${file.name} not found in Puter filesystem`);
+                            }
+                        } catch (error) {
+                            console.warn(`Error checking file ${file.name}:`, error);
+                        }
+                    }
+                    
+                    knowledgeBase = validFiles;
                     refreshFileList();
                     updateKnowledgeBaseStats();
-                    showStatus(`📁 Loaded ${metadata.length} files from storage`, 'info');
+                    
+                    if (validFiles.length > 0) {
+                        showStatus(`📁 Loaded ${validFiles.length} files from storage`, 'success');
+                    }
+                    
+                    // If files were missing, save the valid files back to storage
+                    if (validFiles.length !== metadata.length) {
+                        debouncedSaveKnowledgeBase();
+                    }
                 }
             } catch (error) {
                 ErrorHandler.handleError(error, 'Load knowledge base');
