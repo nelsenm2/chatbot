@@ -714,18 +714,27 @@
                 showStatus('⚠️ Application started with limited functionality', 'warning');
             }
         });
+
+        // DOM Element Constants
+        const fileInput = document.getElementById('file-input');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const fileList = document.getElementById('file-list');
+        const emptyState = document.getElementById('empty-state');
+        const kbStats = document.getElementById('kb-stats');
+        const chatMessages = document.getElementById('chat-messages');
+        const typingIndicator = document.getElementById('typing-indicator');
         
         function setupEventListeners() {
             // File input change event
-            document.getElementById('file-input').addEventListener('change', handleFileUpload);
+            fileInput.addEventListener('change', handleFileUpload);
             
             // Message input events
-            const messageInput = document.getElementById('message-input');
             messageInput.addEventListener('keydown', handleMessageInputKeydown);
             messageInput.addEventListener('input', autoResizeTextarea);
             
             // Send button click
-            document.getElementById('send-button').addEventListener('click', sendMessage);
+            sendButton.addEventListener('click', sendMessage);
         }
         
         // File upload handling with enhanced storage
@@ -844,8 +853,6 @@
         }
         
         function refreshFileList() {
-            const fileList = document.getElementById('file-list');
-            
             // Clear the current list
             fileList.innerHTML = '';
             
@@ -868,7 +875,6 @@
             }
             
             // Update empty state
-            const emptyState = document.getElementById('empty-state');
             if (emptyState) {
                 emptyState.style.display = knowledgeBase.length === 0 ? 'block' : 'none';
             }
@@ -899,37 +905,21 @@
             }
         }
         
-        function refreshFileList() {
-            const fileList = document.getElementById('file-list');
-            fileList.innerHTML = '';
-            knowledgeBase.forEach(file => addFileToList(file));
-        }
-        
         function updateKnowledgeBaseStats() {
-            const stats = document.getElementById('kb-stats');
+            const stats = kbStats;
             const fileCount = knowledgeBase.length;
             const totalSize = knowledgeBase.reduce((sum, file) => sum + file.size, 0);
             
             stats.innerHTML = `📊 ${fileCount} files (${formatBytes(totalSize)})<br><small>Enhanced 20MB+ Storage via Puter.js</small>`;
             
             // Show storage info with enhanced capacity
-            stats.style.color = totalSize > 15000000 ? '#ff6b6b' : '#4CAF50'; // Warn at 15MB instead of 4MB
+            stats.style.color = totalSize > 15000000 ? '#ff6b6b' : '#4CAF50'; // Warn at 15MB
+            if (totalSize > 15000000) {
                 showStatus('⚠️ Storage is nearly full. Consider removing some files.', 'warning');
+            }
             if (stats) {
                 stats.style.color = '#666';
             }
-        }
-        function setupEventListeners() {
-            // File input change event
-            document.getElementById('file-input').addEventListener('change', handleFileUpload);
-            
-            // Message input events
-            const messageInput = document.getElementById('message-input');
-            messageInput.addEventListener('keydown', handleMessageInputKeydown);
-            messageInput.addEventListener('input', autoResizeTextarea);
-            
-            // Send button click event
-            document.getElementById('send-button').addEventListener('click', sendMessage);
         }
         
         function formatBytes(bytes) {
@@ -957,7 +947,6 @@
         async function sendMessage() {
             if (isGenerating) return;
             
-            const messageInput = document.getElementById('message-input');
             const message = messageInput.value.trim();
             
             if (!message) return;
@@ -973,7 +962,7 @@
             
             try {
                 isGenerating = true;
-                document.getElementById('send-button').disabled = true;
+                sendButton.disabled = true;
                 
                 // Prepare context from knowledge base (enhanced)
                 const context = await prepareKnowledgeBaseContext(message);
@@ -1012,7 +1001,7 @@
                 ErrorHandler.handleError(error, 'Send message');
             } finally {
                 isGenerating = false;
-                document.getElementById('send-button').disabled = false;
+                sendButton.disabled = false;
             }
         }
         
@@ -1066,7 +1055,7 @@
                 // Return content of relevant files with size limits
                 const contextParts = [];
                 let totalLength = 0;
-                const maxContextLength = 15000; // Limit context to ~15KB
+                const maxContextLength = 50000; // Limit context to ~50KB
                 
                 for (const { file, content } of relevantFiles) {
                     const fileHeader = `\n--- File: ${file.name} (${formatBytes(file.size)}, Score: ${fileScores.find(f => f.file.id === file.id)?.score}) ---\n`;
@@ -1091,7 +1080,6 @@
         }
         
         function addMessageToChat(role, content) {
-            const chatMessages = document.getElementById('chat-messages');
             const messageElement = document.createElement('div');
             messageElement.className = `message ${role}`;
             
@@ -1137,7 +1125,6 @@
         }
         
         function showTypingIndicator() {
-            const chatMessages = document.getElementById('chat-messages');
             const typingElement = document.createElement('div');
             typingElement.className = 'typing-indicator';
             typingElement.id = 'typing-indicator';
@@ -1155,14 +1142,12 @@
         }
         
         function removeTypingIndicator() {
-            const typingIndicator = document.getElementById('typing-indicator');
             if (typingIndicator) {
                 typingIndicator.remove();
             }
         }
         
         function scrollToBottom() {
-            const chatMessages = document.getElementById('chat-messages');
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
         
@@ -1172,7 +1157,6 @@
         
         async function clearChat() {
             if (confirm('Are you sure you want to clear the chat history?')) {
-                const chatMessages = document.getElementById('chat-messages');
                 chatMessages.innerHTML = `
                     <div class="message assistant">
                         <div class="message-avatar">🤖</div>
@@ -1286,7 +1270,6 @@
                     ChatManager.setHistory(history);
                     
                     // Restore chat messages to UI
-                    const chatMessages = document.getElementById('chat-messages');
                     chatMessages.innerHTML = `
                         <div class="message assistant">
                             <div class="message-avatar">🤖</div>
@@ -1333,7 +1316,6 @@
                     updateKnowledgeBaseStats();
                     
                     // Reset chat
-                    const chatMessages = document.getElementById('chat-messages');
                     chatMessages.innerHTML = `
                         <div class="message assistant">
                             <div class="message-avatar">🤖</div>
